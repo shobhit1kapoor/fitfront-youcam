@@ -1,9 +1,26 @@
 import seedData from "../features/platform/onboarding/lib/seed.json";
 import { keystoneContext } from "../features/keystone/context";
+import { randomBytes } from "node:crypto";
 
 const context = (keystoneContext as any).sudo();
 
 async function seed() {
+  const existingUsers = await context.query.User.findMany({
+    take: 1,
+    query: "id",
+  });
+  if (!existingUsers.length) {
+    await context.query.User.createOne({
+      data: {
+        name: "FitFront System",
+        email: "system@fitfront.invalid",
+        password: randomBytes(48).toString("base64url"),
+        onboardingStatus: "completed",
+      },
+      query: "id",
+    });
+  }
+
   const existingStores = await context.query.Store.findMany({
     take: 1,
     query: "id",
