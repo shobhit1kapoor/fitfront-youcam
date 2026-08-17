@@ -11,7 +11,7 @@ select a real catalog variant, and add it to the existing cart.
 
 FitFront is an entry for the
 [YouCam API Skin AI & Apparel VTO Hackathon](https://youcam-api.devpost.com/).
-It is a significant update to the MIT-licensed
+
 [Openfront](https://github.com/openshiporg/openfront) platform—not a rewrite and
 not a single API-call wrapper.
 
