@@ -6,7 +6,7 @@ import Logo from "@/features/storefront/modules/layout/components/logo"
 
 export default async function Footer() {
   const { collections } = await getCollectionsList(0, 6)
-  const { productCategories } = await getCategoriesList(0, 6)
+  const { productCategories } = await getCategoriesList(0, 9)
   const storeName = "FitFront"
 
   return (
@@ -23,7 +23,7 @@ export default async function Footer() {
                   Categories
                 </span>
                 <ul className="grid grid-cols-1 gap-2">
-                  {productCategories?.slice(0, 6).map((c: any) => {
+                  {productCategories?.slice(0, 9).map((c: any) => {
                     if (c.parentCategory) {
                       return
                     }

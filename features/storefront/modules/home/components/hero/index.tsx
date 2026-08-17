@@ -62,7 +62,7 @@ const Hero = ({ title, description, logoColor }: HeroProps) => {
           </div>
         </div>
         <div className="grid w-full max-w-3xl grid-cols-3 gap-3 pt-4 text-left text-xs text-slate-300 sm:text-sm">
-          {["Choose a supported top", "Use the demo or your photo", "Compare, select, and cart"].map(
+          {["Choose any try-on outfit", "Use the demo or your photo", "Compare, select, and cart"].map(
             (step, index) => (
               <div key={step} className="rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                 <span className="mb-2 block text-violet-300">0{index + 1}</span>
