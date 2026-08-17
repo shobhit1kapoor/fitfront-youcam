@@ -1,5 +1,8 @@
 # FitFront
 
+**Live demo:** [fitfront-youcam.vercel.app](https://fitfront-youcam.vercel.app/us)  
+**Source:** [github.com/shobhit1kapoor/fitfront-youcam](https://github.com/shobhit1kapoor/fitfront-youcam)
+
 **See the look before you cart it.** FitFront is a YouCam-powered virtual
 fitting room embedded in a complete e-commerce journey. A shopper can open a
 supported product, use a rights-safe demo model or upload a photo, review the

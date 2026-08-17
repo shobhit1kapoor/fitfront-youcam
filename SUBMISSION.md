@@ -1,5 +1,8 @@
 # FitFront Devpost submission kit
 
+Live demo: https://fitfront-youcam.vercel.app/us  
+Source repository: https://github.com/shobhit1kapoor/fitfront-youcam
+
 ## Tagline
 
 See the look before you cart it—a YouCam-powered virtual fitting room inside a
