@@ -48,3 +48,9 @@ midscene_run/dump
 midscene_run/report
 midscene_run/tmp
 midscene_run/log
+
+.vercel
+.env*
+!.env.example
+
+.env*

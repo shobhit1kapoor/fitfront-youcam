@@ -113,6 +113,7 @@ Useful commands:
 
 ```bash
 npm run test
+npm run seed:fitfront
 npm run typecheck
 npm run lint
 npm run build
