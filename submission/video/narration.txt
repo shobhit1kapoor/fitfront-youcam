@@ -1,0 +1,15 @@
+Meet FitFront: a YouCam-powered virtual fitting room built into an existing Openfront commerce platform.
+
+Online shoppers often like a garment but still hesitate at the cart because a flat product image does not answer the most visual question: how might this look on me? FitFront brings that decision into the product page.
+
+The storefront, catalog, product variants, cart, checkout, backend, and dashboard remain Openfront. The hackathon work adds FitFront branding and a focused upper-body virtual try-on journey powered by YouCam Clothes VTO version four.
+
+A shopper can use the original bundled demo model or upload a front-facing photo. Before anything leaves the browser, FitFront explains that the image is sent to Perfect Corp, is not stored by FitFront, may be retained by YouCam for up to thirty days, and that result links last about two hours. Processing only starts after explicit consent.
+
+This is a real generated result. The shopper compares before and after, chooses a color and size, downloads the look if desired, and adds the selected variant directly to the existing cart. FitFront is clear that the visualization is not a sizing or physical-fit guarantee.
+
+The API key stays server-side. FitFront resolves garment references only from its trusted catalog, uploads both images through YouCam presigned requests, creates exactly one Clothes VTO task, and polls that task separately. Anonymous sessions are limited to three generations per day.
+
+The prototype uses only free infrastructure. It checks the live YouCam feature cost and unit balance before every task, preserves a one-hundred-unit reserve, and has no billing or paid fallback. Photos and results are never written to the application database.
+
+FitFront turns YouCam into a complete retail journey instead of a disconnected API demo: discover, visualize, compare, select, and cart. Judges can test it immediately with the bundled demo model at fitfront-youcam dot vercel dot app.

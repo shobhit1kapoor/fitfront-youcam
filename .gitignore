@@ -38,6 +38,12 @@ yarn-error.log*
 .env*
 !.env.example
 
+# Generated video intermediates (the final MP4 remains versioned)
+submission/video/slides/
+submission/video/narration.wav
+submission/video/slides.ffconcat
+submission/video/contact-sheet.png
+
 # vercel
 .vercel
 
