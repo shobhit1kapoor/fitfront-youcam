@@ -3,6 +3,7 @@ import LocalizedClientLink from "@/features/storefront/modules/common/components
 import Thumbnail from "../thumbnail"
 import PreviewPrice from "./price"
 import { retrievePricedProductById } from "@/features/storefront/lib/data/products"
+import { isSupportedUpperBodyProduct } from "@/features/youcam/catalog"
 
 import { StoreRegion } from "@/features/storefront/types/storefront";
 
@@ -10,7 +11,7 @@ interface ProductPreviewProps {
   productPreview: {
     id: string
     handle: string
-    thumbnail: any
+    thumbnail: string | null
     title: string
   }
   isFeatured?: boolean
@@ -32,6 +33,7 @@ export default async function ProductPreview({
   }
 
   const firstVariantId = product.productVariants?.[0]?.id || null
+  const isTryOnReady = isSupportedUpperBodyProduct(productPreview)
   const { cheapestPrice } = getProductPrice({
     product,
     variantId: firstVariantId,
@@ -41,7 +43,12 @@ export default async function ProductPreview({
   return (
     <LocalizedClientLink href={`/products/${productPreview.handle}`} className="group">
       <div className="flex flex-col gap-3">
-        <div className="aspect-square overflow-hidden rounded-lg bg-muted">
+        <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+          {isTryOnReady && (
+            <span className="absolute left-3 top-3 z-10 rounded-full border border-violet-200 bg-white/95 px-3 py-1 text-xs font-semibold text-violet-700 shadow-sm backdrop-blur">
+              ✦ YouCam try-on
+            </span>
+          )}
           <Thumbnail thumbnail={productPreview.thumbnail} size="square" isFeatured={isFeatured} />
         </div>
         <div className="flex items-baseline justify-between gap-2">
@@ -54,6 +61,11 @@ export default async function ProductPreview({
             <p className="text-sm text-muted-foreground/60">N/A</p>
           )}
         </div>
+        {isTryOnReady && (
+          <p className="-mt-2 text-xs font-medium text-violet-700">
+            Open product to try it on
+          </p>
+        )}
       </div>
     </LocalizedClientLink>
   )

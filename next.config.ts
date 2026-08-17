@@ -13,6 +13,11 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
+    // FitFront's catalog assets are checked into public/images. The Vercel
+    // multi-service output does not expose Next's image optimizer route, so
+    // serve these already-optimized assets directly instead of generating
+    // broken /_next/image URLs.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
