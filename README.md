@@ -142,7 +142,7 @@ production commerce deployment.
 2. Push this repository to a public Git host.
 3. Import it into a personal Vercel Hobby project—do not start a Pro trial.
 4. Add the five server-side environment variables listed above.
-5. Deploy; the build runs the checked-in Prisma migration before Next.js build.
+5. Run `npx prisma migrate deploy` once against the target database, then deploy. Keeping migrations outside the Vercel build prevents parallel builds from competing for Prisma's database advisory lock.
 6. Initialize and seed the store, then verify a supported product end-to-end.
 7. Keep the deployment available through the hackathon judging period.
 
