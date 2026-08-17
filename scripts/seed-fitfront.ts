@@ -1,6 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Keystone's generated query surface is intentionally adapted at this seed boundary. */
+
 import seedData from "../features/platform/onboarding/lib/seed.json";
 import { keystoneContext } from "../features/keystone/context";
 import { randomBytes } from "node:crypto";
+import {
+  expandedCategories,
+  expandedProducts,
+} from "./fitfront-expanded-catalog";
 
 const context = (keystoneContext as any).sudo();
 
@@ -34,7 +40,7 @@ async function seed() {
     currencies[currency.code] = await findOrCreate(
       "Currency",
       { code: currency.code },
-      currency
+      currency,
     );
   }
 
@@ -43,23 +49,24 @@ async function seed() {
     countries[country.iso2] = await findOrCreate(
       "Country",
       { iso2: country.iso2 },
-      country
+      country,
     );
   }
 
   const manualPayment = seedData.paymentProviders.find(
-    (provider) => provider.code === "pp_system_default"
+    (provider) => provider.code === "pp_system_default",
   );
-  if (!manualPayment) throw new Error("Manual payment provider is missing from seed data.");
+  if (!manualPayment)
+    throw new Error("Manual payment provider is missing from seed data.");
   const manualPaymentId = await findOrCreate(
     "PaymentProvider",
     { code: manualPayment.code },
-    manualPayment
+    manualPayment,
   );
   const fulfillmentId = await findOrCreate(
     "FulfillmentProvider",
     { code: "fp_manual" },
-    { code: "fp_manual", name: "Manual Fulfillment", isInstalled: true }
+    { code: "fp_manual", name: "Manual Fulfillment", isInstalled: true },
   );
 
   const regions: Record<string, string> = {};
@@ -79,7 +86,7 @@ async function seed() {
             id: countries[country.iso2],
           })),
         },
-      }
+      },
     );
   }
 
@@ -96,13 +103,13 @@ async function seed() {
           uniqueKey: `${option.name}-${region.code}`,
           fulfillmentProvider: { connect: { id: fulfillmentId } },
           region: { connect: { id: regions[region.code] } },
-        }
+        },
       );
     }
   }
 
   const categories: Record<string, string> = {};
-  for (const category of seedData.categories) {
+  for (const category of [...seedData.categories, ...expandedCategories]) {
     categories[category.handle] = await findOrCreate(
       "ProductCategory",
       { handle: category.handle },
@@ -110,7 +117,7 @@ async function seed() {
         title: category.name,
         handle: category.handle,
         isActive: category.isActive,
-      }
+      },
     );
   }
 
@@ -119,11 +126,12 @@ async function seed() {
     collections[collection.handle] = await findOrCreate(
       "ProductCollection",
       { handle: collection.handle },
-      collection
+      collection,
     );
   }
 
-  for (const product of seedData.products) {
+  const allProducts: any[] = [...seedData.products, ...expandedProducts];
+  for (const product of allProducts) {
     const existing = await context.query.Product.findOne({
       where: { handle: product.handle },
       query: "id",
@@ -135,6 +143,7 @@ async function seed() {
       productCollections,
       productCategories,
       subtitle,
+      imageExtension,
       ...productInput
     } = product;
     const createdProduct = await context.query.Product.createOne({
@@ -142,19 +151,23 @@ async function seed() {
         ...productInput,
         ...(subtitle ? { subtitle } : {}),
         productCollections: {
-          connect: productCollections.connect.map((collection) => ({
-            id: collections[collection.handle],
-          })),
+          connect: productCollections.connect.map(
+            (collection: { handle: string }) => ({
+              id: collections[collection.handle],
+            }),
+          ),
         },
         productCategories: {
-          connect: productCategories.connect.map((category) => ({
-            id: categories[category.handle],
-          })),
+          connect: productCategories.connect.map(
+            (category: { handle: string }) => ({
+              id: categories[category.handle],
+            }),
+          ),
         },
         productImages: {
           create: [
             {
-              imagePath: `/images/${product.handle}.jpeg`,
+              imagePath: `/images/${product.handle}.${imageExtension || "jpeg"}`,
               altText: product.title,
             },
           ],
@@ -169,18 +182,24 @@ async function seed() {
     });
 
     const optionValues = createdProduct.productOptions.flatMap(
-      (option: any) => option.productOptionValues
+      (option: any) => option.productOptionValues,
     );
     for (const variant of variants) {
-      const matchingOptions = variant.options.map((wanted) => {
-        const match = optionValues.find(
-          (option: any) => option.value === wanted.value
-        );
-        if (!match) throw new Error(`Missing option ${wanted.value} for ${product.handle}`);
-        return { id: match.id };
-      });
+      const matchingOptions = variant.options.map(
+        (wanted: { value: string }) => {
+          const match = optionValues.find(
+            (option: any) => option.value === wanted.value,
+          );
+          if (!match)
+            throw new Error(
+              `Missing option ${wanted.value} for ${product.handle}`,
+            );
+          return { id: match.id };
+        },
+      );
       const validPrices = variant.prices.filter(
-        (price) => currencies[price.currencyCode] && regions[price.regionCode]
+        (price: { currencyCode: string; regionCode: string; amount: number }) =>
+          currencies[price.currencyCode] && regions[price.regionCode],
       );
       await context.query.ProductVariant.createOne({
         data: {
@@ -190,11 +209,17 @@ async function seed() {
           product: { connect: { id: createdProduct.id } },
           productOptionValues: { connect: matchingOptions },
           prices: {
-            create: validPrices.map((price) => ({
-              amount: price.amount,
-              currency: { connect: { id: currencies[price.currencyCode] } },
-              region: { connect: { id: regions[price.regionCode] } },
-            })),
+            create: validPrices.map(
+              (price: {
+                currencyCode: string;
+                regionCode: string;
+                amount: number;
+              }) => ({
+                amount: price.amount,
+                currency: { connect: { id: currencies[price.currencyCode] } },
+                region: { connect: { id: regions[price.regionCode] } },
+              }),
+            ),
           },
         },
         query: "id",
@@ -209,7 +234,7 @@ async function seed() {
 async function findOrCreate(
   listKey: string,
   where: Record<string, string>,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ) {
   const list = context.query[listKey];
   const existing = await list.findOne({ where, query: "id" });

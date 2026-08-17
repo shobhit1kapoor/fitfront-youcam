@@ -9,6 +9,7 @@ import {
   getBalance,
   hasFreeBudget,
 } from "../budget";
+import type { YouCamGarmentCategory } from "../catalog";
 
 const DEFAULT_BASE_URL = "https://yce-api-01.makeupar.com";
 const CLOTH_TASK_PATH = CLOTH_V4_TASK_PATH;
@@ -52,12 +53,15 @@ function config() {
     throw new YouCamError(
       "youcam_not_configured",
       "YouCam is not configured on this deployment.",
-      503
+      503,
     );
   }
   return {
     apiKey,
-    baseUrl: (process.env.YOUCAM_API_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, ""),
+    baseUrl: (process.env.YOUCAM_API_BASE_URL || DEFAULT_BASE_URL).replace(
+      /\/$/,
+      "",
+    ),
     reserve: Math.max(0, Number(process.env.YOUCAM_UNIT_RESERVE || 100)),
   };
 }
@@ -80,7 +84,11 @@ async function apiJson(path: string, init?: RequestInit) {
       payload.error_code ||
       (response.status === 429 ? "TooManyRequests" : undefined) ||
       (response.status === 401 ? "InvalidApiKey" : "provider_error");
-    throw new YouCamError(code, safeProviderMessage(code), response.status || 502);
+    throw new YouCamError(
+      code,
+      safeProviderMessage(code),
+      response.status || 502,
+    );
   }
   return payload;
 }
@@ -99,7 +107,7 @@ export async function assertFreeBudget() {
     throw new YouCamError(
       "free_unit_reserve",
       `FitFront keeps ${reserve} free units in reserve; another try-on is unavailable.`,
-      402
+      402,
     );
   }
   return { balance, featureCost, reserve };
@@ -130,7 +138,7 @@ async function getClothFeatureCost() {
   throw new YouCamError(
     "feature_cost_unavailable",
     "FitFront could not verify the free-unit cost, so no units were used.",
-    503
+    503,
   );
 }
 
@@ -145,12 +153,13 @@ export async function uploadImages(images: YouCamImage[]) {
       })),
     }),
   });
-  const descriptors: UploadDescriptor[] = payload.data?.files ?? payload.files ?? [];
+  const descriptors: UploadDescriptor[] =
+    payload.data?.files ?? payload.files ?? [];
   if (!Array.isArray(descriptors) || descriptors.length !== images.length) {
     throw new YouCamError(
       "upload_initialization_failed",
       "YouCam could not prepare the image upload.",
-      502
+      502,
     );
   }
 
@@ -161,7 +170,7 @@ export async function uploadImages(images: YouCamImage[]) {
         throw new YouCamError(
           "upload_initialization_failed",
           "YouCam returned an incomplete upload request.",
-          502
+          502,
         );
       }
       const headers = buildPresignedUploadHeaders(upload.headers);
@@ -174,22 +183,26 @@ export async function uploadImages(images: YouCamImage[]) {
         throw new YouCamError(
           "image_upload_failed",
           "An image could not be uploaded to YouCam.",
-          502
+          502,
         );
       }
-    })
+    }),
   );
 
   return descriptors.map((descriptor) => descriptor.file_id);
 }
 
-export async function createClothTask(srcFileId: string, refFileId: string) {
+export async function createClothTask(
+  srcFileId: string,
+  refFileId: string,
+  garmentCategory: YouCamGarmentCategory,
+) {
   const payload = await apiJson(CLOTH_TASK_PATH, {
     method: "POST",
     body: JSON.stringify({
       src_file_id: srcFileId,
       ref_file_id: refFileId,
-      garment_category: "upper_body",
+      garment_category: garmentCategory,
     }),
   });
   const taskId = payload.data?.task_id;
@@ -197,14 +210,18 @@ export async function createClothTask(srcFileId: string, refFileId: string) {
     throw new YouCamError(
       "task_creation_failed",
       "YouCam did not return a task identifier.",
-      502
+      502,
     );
   }
   return taskId;
 }
 
-export async function pollClothTask(taskId: string): Promise<TryOnPollResponse> {
-  const payload = await apiJson(`${CLOTH_TASK_PATH}/${encodeURIComponent(taskId)}`);
+export async function pollClothTask(
+  taskId: string,
+): Promise<TryOnPollResponse> {
+  const payload = await apiJson(
+    `${CLOTH_TASK_PATH}/${encodeURIComponent(taskId)}`,
+  );
   const data = payload.data || payload;
   const status = data.task_status || data.status;
   if (status === "success") {
@@ -213,14 +230,18 @@ export async function pollClothTask(taskId: string): Promise<TryOnPollResponse> 
       throw new YouCamError(
         "result_unavailable",
         "YouCam completed the task but did not return a safe result URL.",
-        502
+        502,
       );
     }
     return { status: "success", resultUrl };
   }
   if (status === "error") {
     const code = data.error_code || data.error?.code || "provider_error";
-    return { status: "error", errorCode: code, message: safeProviderMessage(code) };
+    return {
+      status: "error",
+      errorCode: code,
+      message: safeProviderMessage(code),
+    };
   }
   return { status: "running" };
 }

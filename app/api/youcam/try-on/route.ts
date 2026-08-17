@@ -37,58 +37,68 @@ export async function POST(request: NextRequest) {
     const consent = optionalStringField(formData, "consent");
 
     if (!productId) {
-      throw new YouCamError("missing_product", "Choose a product to try on.", 400);
+      throw new YouCamError(
+        "missing_product",
+        "Choose a product to try on.",
+        400,
+      );
     }
     if (consent !== "true") {
       throw new YouCamError(
         "consent_required",
         "Consent is required before a photo can be sent to YouCam.",
-        400
+        400,
       );
     }
 
     await assertSessionQuota(session.hash);
     await assertFreeBudget();
 
+    const garmentImage = await getTrustedGarmentImage(productId, variantId);
     const sourceValue = formData.get("sourceImage");
-    const [sourceImage, garmentImage] = await Promise.all([
-      demoImageId
-        ? getDemoImage(demoImageId)
-        : sourceValue instanceof File
-          ? imageFromBrowserFile(sourceValue)
-          : Promise.reject(
-              new YouCamError(
-                "missing_source_image",
-                "Choose the demo model or upload a photo.",
-                400
-              )
+    const sourceImage = demoImageId
+      ? await getDemoImage(demoImageId, garmentImage.garmentCategory)
+      : sourceValue instanceof File
+        ? await imageFromBrowserFile(sourceValue)
+        : await Promise.reject(
+            new YouCamError(
+              "missing_source_image",
+              "Choose the demo model or upload a photo.",
+              400,
             ),
-      getTrustedGarmentImage(productId, variantId),
-    ]);
+          );
 
     const job = await createPendingJob(session.hash, productId);
     pendingJob = job;
-    const [srcFileId, refFileId] = await uploadImages([sourceImage, garmentImage]);
-    const taskId = await createClothTask(srcFileId, refFileId);
+    const [srcFileId, refFileId] = await uploadImages([
+      sourceImage,
+      garmentImage,
+    ]);
+    const taskId = await createClothTask(
+      srcFileId,
+      refFileId,
+      garmentImage.garmentCategory,
+    );
     await markJobStarted(job.id, taskId);
     taskStarted = true;
 
     const response = NextResponse.json(
       { taskId, status: "running" },
-      { status: 202, headers: { "Cache-Control": "no-store" } }
+      { status: 202, headers: { "Cache-Control": "no-store" } },
     );
     if (session.isNew) attachSessionCookie(response, session.value);
     return response;
   } catch (error) {
     if (pendingJob) {
-      await markJobStatus(pendingJob.id, taskStarted ? "error" : "aborted").catch(
-        () => undefined
-      );
+      await markJobStatus(
+        pendingJob.id,
+        taskStarted ? "error" : "aborted",
+      ).catch(() => undefined);
     }
     const safe = toSafeError(error);
     const response = NextResponse.json(
       { status: "error", errorCode: safe.errorCode, message: safe.message },
-      { status: safe.status, headers: { "Cache-Control": "no-store" } }
+      { status: safe.status, headers: { "Cache-Control": "no-store" } },
     );
     if (session.isNew) attachSessionCookie(response, session.value);
     return response;

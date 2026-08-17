@@ -76,17 +76,19 @@ written to FitFront's database or logs.
 
 ## Supported catalog
 
-The hackathon v1 intentionally supports the five seeded upper-body products:
+FitFront supports twelve trusted catalog products across YouCam's three apparel
+categories. The original five tops remain available, and the expanded catalog
+adds:
 
-- Penrose Triangle T-Shirt
-- Escher's Staircase Hoodie
-- Fibonacci Spiral Crop Top
-- Schrödinger's Cat Tank Top
-- Paradox Puzzle Sweater
+- Upper body: Cobalt Structured Blazer and Ivory Silk Blouse
+- Lower body: Indigo Straight-Leg Jeans and Burgundy Pleated Midi Skirt
+- Full body: Emerald Wrap Midi Dress, Sand Utility Jumpsuit, and Midnight
+  Tailored Pantsuit
 
-Lower-body and accessory items are hidden from this feature because the Clothes
-VTO input rules differ; FitFront avoids pretending that one endpoint fits every
-catalog category. Results visualize appearance and are not a sizing guarantee.
+The API category is resolved from the trusted server-side catalog rather than a
+browser value. Lower/full-body try-ons use a separate full-length demo model and
+ask shoppers for a head-to-feet photo. Unsupported accessories remain hidden.
+Results visualize appearance and are not a sizing guarantee.
 
 ## Local setup
 
@@ -129,8 +131,9 @@ validation, and the optimized Next.js production build pass locally. A real
 YouCam generation still requires the entrant's server-side hackathon key, and
 database migration/seeding requires a PostgreSQL connection.
 
-V1 deliberately handles upper-body apparel only, results are visualizations
-rather than sizing predictions, and YouCam result links expire. The extracted
+V1 handles upper-, lower-, and full-body apparel but not shoes or accessories;
+results are visualizations rather than sizing predictions, and YouCam result
+links expire. The extracted
 Openfront baseline also contains broad pre-existing type/lint failures and npm
 dependency advisories outside the FitFront change set; these should be handled
 as a separate upstream-hardening pass before treating the platform as a

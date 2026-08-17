@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { findClothV4Cost, getBalance, hasFreeBudget } from "./budget";
 import {
+  getDemoImageForCategory,
+  getGarmentCategory,
   getSupportedProductHandles,
-  isSupportedUpperBodyProduct,
+  isSupportedVirtualTryOnProduct,
 } from "./catalog";
 import { safeProviderMessage, toSafeError } from "./errors";
 import { isSessionQuotaExceeded } from "./quota";
@@ -34,48 +36,61 @@ test("rejects undersized and unsupported images", () => {
   assert.throws(
     () => validateImage(pngHeader(320, 480), "image/png", "tiny.png"),
     (error: unknown) =>
-      error instanceof ImageValidationError && error.code === "image_too_small"
+      error instanceof ImageValidationError && error.code === "image_too_small",
   );
   assert.throws(
     () => validateImage(new Uint8Array(32), "image/gif", "photo.gif"),
     (error: unknown) =>
-      error instanceof ImageValidationError && error.code === "unsupported_image_type"
+      error instanceof ImageValidationError &&
+      error.code === "unsupported_image_type",
   );
   assert.throws(
     () =>
       validateImage(
         new Uint8Array(MAX_IMAGE_BYTES + 1),
         "image/png",
-        "too-large.png"
+        "too-large.png",
       ),
     (error: unknown) =>
-      error instanceof ImageValidationError && error.code === "image_too_large"
+      error instanceof ImageValidationError && error.code === "image_too_large",
   );
 });
 
-test("restricts try-on to the explicit upper-body catalog", () => {
+test("maps the trusted try-on catalog to upper, lower, and full body", () => {
   assert.equal(
-    isSupportedUpperBodyProduct({ handle: "penrose-triangle-tshirt" }),
-    true
+    isSupportedVirtualTryOnProduct({ handle: "penrose-triangle-tshirt" }),
+    true,
   );
   assert.equal(
-    isSupportedUpperBodyProduct({ handle: "heisenberg-uncertainty-joggers" }),
-    false
+    getGarmentCategory({ handle: "penrose-triangle-tshirt" }),
+    "upper_body",
   );
-  assert.equal(getSupportedProductHandles().length, 5);
+  assert.equal(
+    getGarmentCategory({ handle: "indigo-straight-leg-jeans" }),
+    "lower_body",
+  );
+  assert.equal(
+    getGarmentCategory({ handle: "emerald-wrap-midi-dress" }),
+    "full_body",
+  );
+  assert.equal(
+    isSupportedVirtualTryOnProduct({ handle: "quantum-socks" }),
+    false,
+  );
+  assert.equal(getSupportedProductHandles().length, 12);
+  assert.equal(getDemoImageForCategory("upper_body").needsFullBody, false);
+  assert.equal(getDemoImageForCategory("lower_body").needsFullBody, true);
 });
 
 test("finds the conservative cloth-v4 cost and enforces the reserve", () => {
   const cost = findClothV4Cost([
     {
       amount: 12,
-      run_task_url:
-        "https://yce-api-01.makeupar.com/s2s/v2.0/task/cloth-v4",
+      run_task_url: "https://yce-api-01.makeupar.com/s2s/v2.0/task/cloth-v4",
     },
     {
       amount: 15,
-      run_task_url:
-        "https://yce-api-01.makeupar.com/s2s/v2.0/task/cloth-v4",
+      run_task_url: "https://yce-api-01.makeupar.com/s2s/v2.0/task/cloth-v4",
     },
     {
       amount: 1,

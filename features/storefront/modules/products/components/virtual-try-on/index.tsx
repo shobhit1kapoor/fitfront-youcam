@@ -23,14 +23,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  FITFRONT_DEMO_IMAGE_ID,
-  FITFRONT_DEMO_IMAGE_PATH,
-  isSupportedUpperBodyProduct,
+  getDemoImageForCategory,
+  getGarmentCategory,
 } from "@/features/youcam/catalog";
-import type {
-  TryOnPollResponse,
-  TryOnStatus,
-} from "@/features/youcam/types";
+import type { TryOnPollResponse, TryOnStatus } from "@/features/youcam/types";
 import { MAX_IMAGE_BYTES } from "@/features/youcam/validation";
 import { cn } from "@/lib/utils";
 
@@ -63,12 +59,14 @@ export default function VirtualTryOn({
   onAddToCart,
   cartDisabled,
 }: VirtualTryOnProps) {
+  const garmentCategory = getGarmentCategory(product);
+  const demoImage = getDemoImageForCategory(garmentCategory || "upper_body");
   const storageKey = `fitfront:vto:${product.id}`;
   const [open, setOpen] = useState(false);
   const [screen, setScreen] = useState<Screen>("photo");
   const [choice, setChoice] = useState<SourceChoice>("demo");
   const [file, setFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState(FITFRONT_DEMO_IMAGE_PATH);
+  const [previewUrl, setPreviewUrl] = useState(demoImage.path);
   const [consent, setConsent] = useState(false);
   const [status, setStatus] = useState<TryOnStatus>("idle");
   const [taskId, setTaskId] = useState<string | null>(null);
@@ -78,7 +76,7 @@ export default function VirtualTryOn({
   const pollingTask = useRef<string | null>(null);
   const mounted = useRef(true);
 
-  const supported = isSupportedUpperBodyProduct(product);
+  const supported = Boolean(garmentCategory);
 
   useEffect(() => {
     return () => {
@@ -88,13 +86,13 @@ export default function VirtualTryOn({
 
   useEffect(() => {
     if (choice !== "upload" || !file) {
-      setPreviewUrl(FITFRONT_DEMO_IMAGE_PATH);
+      setPreviewUrl(demoImage.path);
       return;
     }
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
     return () => URL.revokeObjectURL(objectUrl);
-  }, [choice, file]);
+  }, [choice, demoImage.path, file]);
 
   useEffect(() => {
     const savedTask = window.sessionStorage.getItem(storageKey);
@@ -102,7 +100,7 @@ export default function VirtualTryOn({
     const savedSource = window.sessionStorage.getItem(`${storageKey}:source`);
     if (savedSource === "demo") {
       setChoice("demo");
-      setPreviewUrl(FITFRONT_DEMO_IMAGE_PATH);
+      setPreviewUrl(demoImage.path);
     }
     setTaskId(savedTask);
     setScreen("result");
@@ -126,7 +124,9 @@ export default function VirtualTryOn({
       setStatus("idle");
     } catch (error) {
       setStatus("error");
-      setMessage(error instanceof Error ? error.message : "Choose another photo.");
+      setMessage(
+        error instanceof Error ? error.message : "Choose another photo.",
+      );
     }
   }
 
@@ -146,7 +146,7 @@ export default function VirtualTryOn({
       if (variant?.id) body.set("variantId", variant.id);
       body.set("consent", "true");
       if (choice === "demo") {
-        body.set("demoImageId", FITFRONT_DEMO_IMAGE_ID);
+        body.set("demoImageId", demoImage.id);
       } else if (file) {
         body.set("sourceImage", file);
       }
@@ -170,7 +170,7 @@ export default function VirtualTryOn({
       setMessage(
         error instanceof Error
           ? error.message
-          : "The try-on could not be started."
+          : "The try-on could not be started.",
       );
     }
   }
@@ -181,12 +181,17 @@ export default function VirtualTryOn({
     try {
       for (let attempt = 0; attempt < 24; attempt += 1) {
         if (attempt > 0) await wait(5000);
-        const response = await fetch(`/api/youcam/try-on/${encodeURIComponent(id)}`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `/api/youcam/try-on/${encodeURIComponent(id)}`,
+          {
+            cache: "no-store",
+          },
+        );
         const payload = (await response.json()) as TryOnPollResponse;
         if (!response.ok || payload.status === "error") {
-          throw new Error(payload.message || "The try-on could not be completed.");
+          throw new Error(
+            payload.message || "The try-on could not be completed.",
+          );
         }
         if (payload.status === "success" && payload.resultUrl) {
           if (!mounted.current) return;
@@ -201,7 +206,7 @@ export default function VirtualTryOn({
       if (mounted.current) {
         setStatus("error");
         setMessage(
-          "This task is still processing. Use “Check again” to continue polling without spending more units."
+          "This task is still processing. Use “Check again” to continue polling without spending more units.",
         );
       }
     } catch (error) {
@@ -210,7 +215,7 @@ export default function VirtualTryOn({
         setMessage(
           error instanceof Error
             ? error.message
-            : "The try-on could not be completed."
+            : "The try-on could not be completed.",
         );
       }
     } finally {
@@ -258,9 +263,12 @@ export default function VirtualTryOn({
               <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-violet-700">
                 <Shirt className="size-4" /> FitFront virtual fitting room
               </div>
-              <DialogTitle className="text-2xl">Try on {product.title}</DialogTitle>
+              <DialogTitle className="text-2xl">
+                Try on {product.title}
+              </DialogTitle>
               <DialogDescription>
-                Visualize the style on you, then continue with the selected variant.
+                Visualize the style on you, then continue with the selected
+                variant.
               </DialogDescription>
             </DialogHeader>
             <StepIndicator screen={screen} />
@@ -272,6 +280,8 @@ export default function VirtualTryOn({
                 choice={choice}
                 file={file}
                 previewUrl={previewUrl}
+                demoImagePath={demoImage.path}
+                needsFullBody={demoImage.needsFullBody}
                 message={message}
                 validating={status === "validating"}
                 onChoice={setChoice}
@@ -333,7 +343,7 @@ function StepIndicator({ screen }: { screen: Screen }) {
                 ? "border-violet-300 bg-violet-100 text-violet-950"
                 : step < active
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
-                  : "border-zinc-200 bg-white text-zinc-500"
+                  : "border-zinc-200 bg-white text-zinc-500",
             )}
             aria-current={step === active ? "step" : undefined}
           >
@@ -352,6 +362,8 @@ function PhotoStep({
   choice,
   file,
   previewUrl,
+  demoImagePath,
+  needsFullBody,
   message,
   validating,
   onChoice,
@@ -361,6 +373,8 @@ function PhotoStep({
   choice: SourceChoice;
   file: File | null;
   previewUrl: string;
+  demoImagePath: string;
+  needsFullBody: boolean;
   message: string | null;
   validating: boolean;
   onChoice: (choice: SourceChoice) => void;
@@ -377,12 +391,12 @@ function PhotoStep({
             "rounded-xl border-2 p-3 text-left transition",
             choice === "demo"
               ? "border-violet-500 bg-violet-50"
-              : "border-zinc-200 hover:border-zinc-300"
+              : "border-zinc-200 hover:border-zinc-300",
           )}
           aria-pressed={choice === "demo"}
         >
           <img
-            src={FITFRONT_DEMO_IMAGE_PATH}
+            src={demoImagePath}
             alt="FitFront demo model facing the camera"
             className="h-52 w-full rounded-lg bg-zinc-100 object-contain"
           />
@@ -399,7 +413,7 @@ function PhotoStep({
             "cursor-pointer rounded-xl border-2 p-3 transition",
             choice === "upload"
               ? "border-violet-500 bg-violet-50"
-              : "border-zinc-200 hover:border-zinc-300"
+              : "border-zinc-200 hover:border-zinc-300",
           )}
         >
           <input
@@ -426,7 +440,10 @@ function PhotoStep({
             <Upload className="size-4" /> Upload your photo
           </span>
           <span className="mt-1 block text-sm text-zinc-600">
-            JPG or PNG, under 10 MB. One person, front-facing, face and shoulders visible.
+            JPG or PNG, under 10 MB. One person, front-facing,
+            {needsFullBody
+              ? " visible from head to feet with legs unobstructed."
+              : " with face, shoulders, and torso visible."}
           </span>
         </label>
       </div>
@@ -465,11 +482,21 @@ function ConsentStep({
       />
       <div className="space-y-4">
         <div>
-          <h3 className="font-semibold">Before your photo leaves this browser</h3>
+          <h3 className="font-semibold">
+            Before your photo leaves this browser
+          </h3>
           <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-zinc-600">
-            <li>The image is sent to Perfect Corp&apos;s YouCam API for this try-on.</li>
-            <li>FitFront does not store the photo or generated image in its database.</li>
-            <li>YouCam may retain uploaded and generated files for up to 30 days.</li>
+            <li>
+              The image is sent to Perfect Corp&apos;s YouCam API for this
+              try-on.
+            </li>
+            <li>
+              FitFront does not store the photo or generated image in its
+              database.
+            </li>
+            <li>
+              YouCam may retain uploaded and generated files for up to 30 days.
+            </li>
             <li>The generated download link lasts about two hours.</li>
           </ul>
         </div>
@@ -481,7 +508,8 @@ function ConsentStep({
             className="mt-0.5 size-4"
           />
           <span>
-            I consent to sending this image to Perfect Corp for virtual try-on processing.
+            I consent to sending this image to Perfect Corp for virtual try-on
+            processing.
           </span>
         </label>
         {message && <InlineError message={message} />}
@@ -539,11 +567,13 @@ function ResultStep({
           <Sparkles className="absolute -right-1 top-0 size-6 text-cyan-500" />
         </div>
         <h3 className="mt-6 text-xl font-semibold">
-          {status === "uploading" ? "Preparing your fitting room" : "YouCam is styling your look"}
+          {status === "uploading"
+            ? "Preparing your fitting room"
+            : "YouCam is styling your look"}
         </h3>
         <p className="mt-2 max-w-md text-sm text-zinc-600">
-          Keep this window open. FitFront checks the same task every five seconds and never
-          spends units by silently starting another one.
+          Keep this window open. FitFront checks the same task every five
+          seconds and never spends units by silently starting another one.
         </p>
       </div>
     );
@@ -561,8 +591,9 @@ function ResultStep({
           />
         )}
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
-          AI visualization only — color, drape, sizing, and physical fit may differ in real life.
-          If a variant changes the garment&apos;s appearance, generate a new preview before relying on it.
+          AI visualization only — color, drape, sizing, and physical fit may
+          differ in real life. If a variant changes the garment&apos;s
+          appearance, generate a new preview before relying on it.
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
           <div className="flex gap-2">
@@ -593,7 +624,9 @@ function ResultStep({
       <div className="rounded-full bg-rose-100 p-4 text-rose-700">
         <RefreshCw className="size-8" />
       </div>
-      <h3 className="mt-5 text-lg font-semibold">The fitting room needs attention</h3>
+      <h3 className="mt-5 text-lg font-semibold">
+        The fitting room needs attention
+      </h3>
       <p className="mt-2 max-w-md text-sm text-zinc-600">{message}</p>
       <div className="mt-6 flex gap-3">
         {hasTask && (
@@ -624,14 +657,16 @@ function VariantControls({
 }) {
   return (
     <fieldset className="rounded-xl border p-4">
-      <legend className="px-1 text-sm font-semibold">Choose the cart variant</legend>
+      <legend className="px-1 text-sm font-semibold">
+        Choose the cart variant
+      </legend>
       <div className="grid gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const values = [
             ...new Set(
               (option.productOptionValues || [])
                 .map((entry) => entry.value)
-                .filter((value): value is string => Boolean(value))
+                .filter((value): value is string => Boolean(value)),
             ),
           ];
           return (
@@ -661,7 +696,13 @@ function VariantControls({
   );
 }
 
-function BeforeAfter({ sourceUrl, resultUrl }: { sourceUrl: string; resultUrl: string }) {
+function BeforeAfter({
+  sourceUrl,
+  resultUrl,
+}: {
+  sourceUrl: string;
+  resultUrl: string;
+}) {
   const [position, setPosition] = useState(50);
   const label = useMemo(() => `${position}% result visible`, [position]);
   return (
@@ -711,7 +752,10 @@ function BeforeAfter({ sourceUrl, resultUrl }: { sourceUrl: string; resultUrl: s
 
 function InlineError({ message }: { message: string }) {
   return (
-    <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+    <p
+      role="alert"
+      className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800"
+    >
       {message}
     </p>
   );
@@ -729,10 +773,11 @@ async function validateBrowserImage(file: File) {
     const dimensions = await new Promise<{ width: number; height: number }>(
       (resolve, reject) => {
         const image = new Image();
-        image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+        image.onload = () =>
+          resolve({ width: image.naturalWidth, height: image.naturalHeight });
         image.onerror = () => reject(new Error("The image could not be read."));
         image.src = url;
-      }
+      },
     );
     const shortSide = Math.min(dimensions.width, dimensions.height);
     const longSide = Math.max(dimensions.width, dimensions.height);
